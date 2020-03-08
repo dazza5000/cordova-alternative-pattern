@@ -35,7 +35,7 @@ var app = {
             },
 
                 send: function() {
-                BluetoothSerialJs.com.fivestars.bluetooth.BluetoothSerial.postAlert()
+                BluetoothSerialJs.com.fivestars.bluetooth.BluetoothSerial.postAlert();
                     BluetoothSerialJs.com.fivestars.bluetooth.BluetoothSerial.send("moops",
                         function() {
                             console.log("Success");
