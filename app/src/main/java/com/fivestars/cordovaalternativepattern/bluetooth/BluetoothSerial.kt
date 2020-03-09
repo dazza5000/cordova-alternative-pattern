@@ -155,7 +155,7 @@ object BluetoothSerial {
         val macAddress = getBluetoothMacAddress()
 
         macAddress?.run {
-            sendSuccess(successCallback)
+            sendSuccess(successCallback, this)
         } ?: sendFailure(failureCallback, Exception("Unable to determine Bluetooth MAC address"))
     }
 
