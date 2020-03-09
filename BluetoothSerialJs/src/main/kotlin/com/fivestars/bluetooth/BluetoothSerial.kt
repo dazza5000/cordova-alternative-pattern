@@ -25,6 +25,8 @@ object BluetoothSerial {
     private val json = Json(JsonConfiguration.Stable)
     private var onDataCallback: ((String) -> Unit)? = null
     private var dataEventListener: EventListener? = null
+    var messageHandler: MessageHandler? = null
+
 
     @JsName("listen")
     fun listen(success: () -> Unit, failure: () -> Unit) {
@@ -35,11 +37,12 @@ object BluetoothSerial {
             failure,
             true
         )
+
         val message =
             JavascriptMessage(
                 Action.LISTEN, Callback.LISTEN_SUCCESS, Callback.LISTEN_FAILURE)
 
-        sendMessageToNative(
+        messageHandler?.sendMessageToNative(
             message
         )
     }
@@ -61,7 +64,7 @@ object BluetoothSerial {
                 )
             )
 
-        sendMessageToNative(
+        messageHandler?.sendMessageToNative(
             message
         )
     }
@@ -75,7 +78,7 @@ object BluetoothSerial {
             failure,
             true
         )
-        sendMessageToNative(
+        messageHandler?.sendMessageToNative(
             JavascriptMessage(
                 Action.DISCONNECT,
                 null,
@@ -102,7 +105,7 @@ object BluetoothSerial {
                 )
             )
 
-        sendMessageToNative(
+        messageHandler?.sendMessageToNative(
             javascriptMessage
         );
     }
@@ -137,7 +140,7 @@ object BluetoothSerial {
                 null
             )
 
-        sendMessageToNative(
+        messageHandler?.sendMessageToNative(
             javascriptMessage
         )
     }
@@ -158,7 +161,7 @@ object BluetoothSerial {
                 null,
                 null
             )
-        sendMessageToNative(
+        messageHandler?.sendMessageToNative(
             javascriptMessage
         )
     }
@@ -179,7 +182,7 @@ object BluetoothSerial {
                 null,
                 null
             )
-        sendMessageToNative(
+        messageHandler?.sendMessageToNative(
             javascriptMessage
         )
     }
@@ -193,6 +196,15 @@ object BluetoothSerial {
             failure,
             true
         )
+
+        val javascriptMessage =
+            JavascriptMessage(
+                Action.GET_ADDRESS,
+                Callback.GET_ADDRESS_SUCCESS,
+                Callback.GET_ADDRESS_FAILURE,
+                null
+            )
+        messageHandler?.sendMessageToNative(javascriptMessage)
     }
 
     private fun registerCallbacks(
@@ -211,28 +223,23 @@ object BluetoothSerial {
 
         val listener = object: EventListener {
             override fun handleEvent(event: Event) {
-                    val dataMessage =
-                        json.parse(NativeDataMessage.serializer(), (event as MessageEvent).data.toString())
+                val dataMessage =
+                    json.parse(NativeDataMessage.serializer(), (event as MessageEvent).data.toString())
 
-                    dataMessage.callback.run {
-                        callbacks[this]?.invoke()
+                dataMessage.callback.run {
+                    callbacks[this]?.invoke()
 
-                        // Remove callbacks if we need to
-                        if (removeCallbacks) {
-                            callbacks.remove(successCallback)
-                            callbacks.remove(failureCallback)
-                        }
+                    // Remove callbacks if we need to
+                    if (removeCallbacks) {
+                        callbacks.remove(successCallback)
+                        callbacks.remove(failureCallback)
                     }
+                }
             }
         }
 
         // Setup listener for native message response
         window.addEventListener("message", listener, false)
-    }
-
-    private fun sendMessageToNative(javascriptMessage: JavascriptMessage) {
-        val jsonData = json.stringify(JavascriptMessage.serializer(), javascriptMessage)
-        outputPort.postMessage(jsonData)
     }
 
     @JsName("configureChannel")
@@ -253,10 +260,12 @@ object BluetoothSerial {
 
         inputPort.start()
         outputPort.start()
-    }
 
-    @JsName("postAlert")
-    fun postAlert() {
-        window.alert("yolo")
+        messageHandler = object : MessageHandler {
+            override fun sendMessageToNative(javascriptMessage: JavascriptMessage) {
+                val jsonData = json.stringify(JavascriptMessage.serializer(), javascriptMessage)
+                outputPort.postMessage(jsonData)
+            }
+        }
     }
 }
